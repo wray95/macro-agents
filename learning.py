@@ -1,12 +1,14 @@
 """Auditable feedback-based adaptation; no model fine-tuning or automatic truth claims."""
 import sqlite3
+from pathlib import Path
 from memory import connect
+import vault
 
-DOMAINS = ('general', 'crypto', 'stocks', 'content', 'game')
+DOMAINS = ('general', 'crypto', 'stocks', 'content', 'game', 'markets')
 
 def domain_for(question):
     q = question.lower()
-    for domain, words in [('crypto', ('crypto','bitcoin','token','blockchain')),('stocks', ('stock','equity','share price','market research')),('content', ('reel','video','facebook','channel','publish')),('game', ('game','card battler','arena'))]:
+    for domain, words in [('crypto', ('crypto','bitcoin','token','blockchain')),('markets', ('inflation','deflation','gold','silver','commodit','interest rate','recession','macro')),('stocks', ('stock','equity','share price','market research','future tech')),('content', ('reel','video','facebook','channel','publish')),('game', ('game','card battler','arena'))]:
         if any(word in q for word in words): return domain
     return 'general'
 
@@ -15,7 +17,7 @@ def record(role, domain, score, note, path):
         raise ValueError('Provide a valid role, domain, score 1-5 and note <= 1000 characters')
     with connect(path) as db:
         db.execute('CREATE TABLE IF NOT EXISTS feedback (id INTEGER PRIMARY KEY, role TEXT NOT NULL, domain TEXT NOT NULL, score INTEGER NOT NULL, note TEXT NOT NULL, created_at TEXT DEFAULT CURRENT_TIMESTAMP)')
-        return db.execute('INSERT INTO feedback(role,domain,score,note) VALUES (?,?,?,?)',(role,domain,score,note)).lastrowid
+        return db.execute('INSERT INTO feedback(role,domain,score,note) VALUES (?,?,?,?)',(role,domain,score,vault.encrypt(note, Path(path).expanduser().parent))).lastrowid
 
 def report(domain, path):
     if domain not in DOMAINS: raise ValueError('Unknown domain')

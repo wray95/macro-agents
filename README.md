@@ -81,3 +81,23 @@ python3 orchestrator.py --memory-file project-memory.sqlite3 --ratings crypto
 ```
 
 Ratings are **explicit user feedback**, tracked separately by domain (`crypto`, `stocks`, `content`, `game`, `general`). They influence the contextual feedback shown to the agents on later runs; they do not fine-tune model weights or prove that an answer was correct. Agents challenge specific claims and evidence rather than winning by persuasion alone. Market research needs live price data and dated sources; none are bundled here. Do not make trades solely from agent outputs.
+
+## Market research mode
+
+```
+export AI_MODEL=...            # plus AI_API_KEY, or use --backend claude/codex
+python orchestrator.py --market "Where could gold, silver, crypto and future tech go if inflation cools?"
+```
+
+Five specialists (Macro Economist, Crypto Analyst, Equities & Future Tech Analyst, Metals & Commodities Analyst,
+Risk Skeptic) debate over a live, timestamped data snapshot (CoinGecko, Stooq, FRED) and the synthesizer returns
+base/bull/bear scenarios, catalysts and risk management. It never guarantees a winner; research only, not financial advice.
+
+## Security
+
+- Memories and feedback notes are encrypted at rest (Fernet/AES + HMAC); data dir is `0700`, files `0600`.
+- Strongest: `export MACRO_AGENTS_PASSPHRASE=...` (scrypt-derived key, nothing secret stored on disk).
+  Without it a random `.key` file is created beside the database.
+- Encrypt older plaintext data: `python orchestrator.py --encrypt-existing`.
+- API keys are read from the environment only; `AI_BASE_URL` must be https (localhost excepted).
+- `.gitignore` blocks databases, keys and `.env`.
