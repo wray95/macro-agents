@@ -22,9 +22,6 @@ class DeliberationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             deliberate("question", rounds=4)
 
-if __name__ == "__main__":
-    unittest.main()
-
 class MemoryTests(unittest.TestCase):
     def test_shared_memory_and_forget(self):
         import tempfile
@@ -102,3 +99,7 @@ class FreebuffBridgeTests(unittest.TestCase):
         self.assertIn("Launch offline first", prompt)
         self.assertIn("How do we launch?", prompt)
         self.assertIn("Do not edit files", prompt)
+
+
+if __name__ == "__main__":
+    unittest.main()

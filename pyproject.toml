@@ -13,4 +13,4 @@ license = {text = "MIT"}
 macro-agents = "orchestrator:main"
 
 [tool.setuptools]
-py-modules = ["orchestrator", "memory"]
+py-modules = ["orchestrator", "memory", "learning"]
