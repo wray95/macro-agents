@@ -1,8 +1,11 @@
-"""Explicit, shared local memory for all deliberation roles."""
+"""Explicit, shared local memory for all deliberation roles (encrypted at rest)."""
+import os
 import re
 import sqlite3
 from pathlib import Path
 from contextlib import contextmanager
+
+import vault
 
 DEFAULT_PATH = Path.home() / ".macro-agents" / "memory.sqlite3"
 
@@ -10,8 +13,12 @@ DEFAULT_PATH = Path.home() / ".macro-agents" / "memory.sqlite3"
 @contextmanager
 def connect(path=DEFAULT_PATH):
     path = Path(path).expanduser()
-    path.parent.mkdir(parents=True, exist_ok=True)
+    vault.private_dir(path.parent)
     db = sqlite3.connect(path)
+    try:
+        os.chmod(path, 0o600)
+    except OSError:
+        pass
     db.execute("CREATE TABLE IF NOT EXISTS memories (id INTEGER PRIMARY KEY, text TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)")
     try:
         with db:
@@ -20,22 +27,38 @@ def connect(path=DEFAULT_PATH):
         db.close()
 
 
+def _dir(path):
+    return Path(path).expanduser().parent
+
+
 def add(text, path=DEFAULT_PATH):
     text = text.strip()
     if not text or len(text) > 4000:
         raise ValueError("Memory must contain 1-4000 characters")
     with connect(path) as db:
-        return db.execute("INSERT INTO memories(text) VALUES (?)", (text,)).lastrowid
+        return db.execute("INSERT INTO memories(text) VALUES (?)", (vault.encrypt(text, _dir(path)),)).lastrowid
 
 
 def list_all(path=DEFAULT_PATH):
     with connect(path) as db:
-        return db.execute("SELECT id, text, created_at FROM memories ORDER BY id DESC").fetchall()
+        rows = db.execute("SELECT id, text, created_at FROM memories ORDER BY id DESC").fetchall()
+    return [(mid, vault.decrypt(text, _dir(path)), created) for mid, text, created in rows]
 
 
 def forget(memory_id, path=DEFAULT_PATH):
     with connect(path) as db:
         return db.execute("DELETE FROM memories WHERE id = ?", (memory_id,)).rowcount > 0
+
+
+def encrypt_existing(path=DEFAULT_PATH):
+    """Encrypt any legacy plaintext rows in place; returns how many were converted."""
+    count = 0
+    with connect(path) as db:
+        for mid, text in db.execute("SELECT id, text FROM memories").fetchall():
+            if not vault.is_encrypted(text):
+                db.execute("UPDATE memories SET text=? WHERE id=?", (vault.encrypt(text, _dir(path)), mid))
+                count += 1
+    return count
 
 
 def relevant(question, path=DEFAULT_PATH, limit=8, max_chars=3000):

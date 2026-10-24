@@ -1,2 +1,8 @@
 __pycache__/
 *.pyc
+*.sqlite3
+*.db
+.env
+.key
+.salt
+*.pem
